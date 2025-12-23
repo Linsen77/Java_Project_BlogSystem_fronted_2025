@@ -1,0 +1,59 @@
+.v-container {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
+:root {
+    --primary-color: #fdd6b8;  /*主色*/
+    --secondary-color: #dfdfdf; /*次色*/
+    --accent-color: #F4C2C2; /*链接颜色*/
+    --background-color: #f5f7fa; /* 背景 */
+    --text-color: #333333;      /* 文字 */
+    --card-background: #FAF1E6; /* 卡片背景 */
+    --button-background: #f8dea8; /* 按钮背景 */
+    --button-hover: #F4C2C2;    /* 淡粉色按钮悬浮背景 */
+    --border-color: #E0E0E0;    /* 边框颜色 */
+}
+
+body {
+    background-color: var(--background-color);
+    color: var(--text-color);
+    font-family: 'Roboto', sans-serif;
+}
+
+v-btn {
+    background-color: var(--button-background);
+    color: #fff;
+    border-radius: 4px;
+}
+
+v-btn:hover {
+    background-color: var(--button-hover);
+}
+
+v-card {
+    background-color: var(--card-background);
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease-in-out;
+}
+
+v-card:hover {
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+v-navigation-drawer {
+    background-color: var(--primary-color);
+}
+
+v-list-item-title {
+    font-weight: bold;
+}
+
+v-list-item {
+    transition: background-color 0.3s ease;
+}
+
+v-list-item:hover {
+    background-color: var(--accent-color);
+}
