@@ -23,25 +23,30 @@
 
             <!-- 数据统计 -->
             <VRow>
-              <VCol cols="3" class="text-center">
+              <VCol cols="2" class="text-center">
                 <div class="text-h6">{{ userArticles.length }}</div>
                 <div class="text-caption">文章</div>
               </VCol>
 
-              <VCol cols="3" class="text-center" style="cursor: pointer;" @click="goToFollowing">
-                <div class="text-h6">{{ stats?.followingCount ?? 0}}</div>
+              <VCol cols="2" class="text-center" style="cursor: pointer;" @click="goToFollowing">
+                <div class="text-h6">{{ stats?.following ?? 0 }}</div>
                 <div class="text-caption">关注</div>
               </VCol>
 
-              <VCol cols="3" class="text-center">
-                <div class="text-h6">{{ stats?.followerCount ?? 0}}</div>
+              <VCol cols="2" class="text-center">
+                <div class="text-h6">{{ stats?.followers ?? 0}}</div>
                 <div class="text-caption">粉丝</div>
               </VCol>
 
+              <VCol cols="2" class="text-center">
+                <div class="text-h6">{{ stats?.likes ?? 0 }}</div>
+                <div class="text-caption">获赞</div>
+              </VCol>
+
               <!-- 收藏数（仅自己可见） -->
-              <VCol cols="3" class="text-center" v-if="isSelf">
+              <VCol cols="2" class="text-center" v-if="isSelf">
                 <div style="cursor: pointer;" @click="goToBookmarks">
-                  <div class="text-h6">{{ bookmarkedArticles?.length ?? 0}}</div>
+                  <div class="text-h6">{{ stats.bookmarks }}</div>
                   <div class="text-caption">收藏</div>
                 </div>
               </VCol>
@@ -92,7 +97,7 @@
         <VCol cols="12" md="6" v-for="article in userArticles" :key="article.id">
           <VCard class="mb-6" elevation="0" variant="outlined">
             <VImg
-                :src="article.cover || 'https://picsum.photos/400/200?random'"
+                :src="article.cover"
                 height="160"
                 cover
             />
@@ -116,7 +121,7 @@
           <VCol cols="12" md="6" v-for="article in bookmarkedArticles" :key="article.id">
             <VCard class="mb-6" elevation="0" variant="outlined">
               <VImg
-                  :src="article.cover || 'https://picsum.photos/400/200?random'"
+                  :src="article.cover"
                   height="160"
                   cover
               />
@@ -216,8 +221,8 @@ const profileUser = computed(() => {
 // 用户统计数据
 const stats = ref({
   articles: 0,
-  following: 0,
-  followers: 0,
+  followers: 0, //我的粉丝
+  following: 0, //我关注的人
   likes: 0
 })
 
@@ -237,7 +242,14 @@ onMounted(async () => {
     try {
       if (userStore.isLoggedIn && userStore.user) {
         const data = await userStore.fetchUserStatistics(profileUserId.value)
-        stats.value = data
+        stats.value = {
+          articles: data.articleCount,
+          followers: data.followerCount,   // 粉丝
+          following: data.followeeCount,   // 我关注的人
+          likes: data.likeCount,
+          bookmarks: data.bookmarks
+        }
+
       }
     } catch (error) {
       console.error('获取用户统计失败:', error)
@@ -264,15 +276,28 @@ onMounted(async () => {
   if (isSelf.value) {
     editName.value = userStore.user?.name
     editBio.value = userStore.user?.bio
+
+    try{
+      const res = await http.get(`/users/bookmarks/${userStore.user.id}`)
+      bookmarkIds.value = Array.isArray(res) ? res.map(a => a.id) : []
+    } catch (e){
+      console.error("收藏加载失败",e)
+      bookmarkIds.value = []
+    }
   }
 
+  // 检查是否已关注
   if (!isSelf.value && userStore.user) {
     try {
-      const res = await http.get(`/users/${userStore.user.id}/bookmarks`)
-      bookmarkIds.value = Array.isArray(res) ? res.map(a => a.id) : []
+      const res = await http.get('/follow/isFollowing', {
+        params: {
+          viewerId: userStore.user.id,      // 当前登录用户
+          authorId: profileUserId.value     // 被查看的用户
+        }
+      })
+      isFollowingUser.value = res === true
     } catch (e) {
-      console.error("加载收藏失败:", e)
-      bookmarkIds.value = []
+      console.error("检查关注状态失败", e)
     }
   }
 

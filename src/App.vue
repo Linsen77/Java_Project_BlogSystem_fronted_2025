@@ -45,15 +45,29 @@
 import { useNotificationStore } from '@/store/notification'
 import { useRouter } from 'vue-router'
 import useUserStore from '@/store/user'
+import { onMounted, watch } from 'vue'
 
 const router = useRouter()
 const userStore = useUserStore()
 const notificationStore = useNotificationStore()
 
-//用户登录时开启websocket
-if (userStore.user) {
-  notificationStore.startSocket()
-}
+//页面加载后再启动 WebSocket（确保 userStore 已恢复）
+onMounted(() => {
+  if (userStore.user?.id) {
+    notificationStore.fetchNotifications(userStore.user.id)
+    notificationStore.startSocket()
+  }
+})
+//监听登录状态变化（登录后自动连接 WebSocket）
+watch(
+    () => userStore.user,
+    (newVal) => {
+      if (newVal?.id) {
+        notificationStore.fetchNotifications(newVal.id)
+        notificationStore.startSocket()
+      }
+    }
+)
 
 // 跳转到首页
 const goToHome = () => {

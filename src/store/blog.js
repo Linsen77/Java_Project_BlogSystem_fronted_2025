@@ -12,7 +12,7 @@ export const useBlogStore = defineStore('blog', {
     actions: {
         async fetchArticles() {
             const res = await http.get('/articles')
-            this.articles = res.data
+            this.articles = res
         },
 
         async fetchArticlesByTag(tagName) {
@@ -23,7 +23,8 @@ export const useBlogStore = defineStore('blog', {
 
         async fetchHotArticles() {
             const res = await http.get('/articles/hot')
-            this.hotArticles = res.data
+            console.log("热门文章返回：", res)
+            this.hotArticles = res
         },
 
         //后端搜索接口
@@ -31,13 +32,13 @@ export const useBlogStore = defineStore('blog', {
             const res = await http.get('/articles/search', {
                 params: { q: query }
             })
-            this.articles = res.data
+            this.articles = res
         },
 
         //基于用户历史推荐文章
         async fetchRecommended(userId) {
             const res = await http.get(`/articles/recommend/${userId}`)
-            this.recommended = res.data
+            this.recommended = res
         }
     }
 })

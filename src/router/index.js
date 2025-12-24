@@ -42,7 +42,8 @@ router.beforeEach((to, from, next) => {
         const saved = localStorage.getItem("user")
         if (saved && saved !== "undefined") {
             userStore.user = JSON.parse(saved)
-            userStore.isLoggedIn = true
+
+            userStore.fetchUserProfile(userStore.user.id)
         }
     }
 

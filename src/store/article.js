@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
 import http from '@/service/http'
+import { useProfileStore } from '@/store/profile'
+import useUserStore from '@/store/user'
 
 export const useArticleStore = defineStore('article', {
     state: () => ({
@@ -111,6 +113,7 @@ export const useArticleStore = defineStore('article', {
         },
 
         async fetchBookmarkStatus(articleId, userId) {
+            if (!articleId || !userId) return
             const res = await http.get(`/articles/${articleId}/bookmark/status`, { params: { userId } })
             this.bookmarks[articleId] = res === true
         },
@@ -118,11 +121,21 @@ export const useArticleStore = defineStore('article', {
         async addBookmark(articleId) {
             await http.post(`/articles/${articleId}/bookmark`)
             this.bookmarks[articleId] = true
+
+            //刷新用户信息
+            const userStore = useUserStore()
+            const profileStore = useProfileStore()
+            await profileStore.fetchUserStats(userStore.user.id)
         },
 
         async removeBookmark(articleId) {
             await http.delete(`/articles/${articleId}/bookmark`)
             this.bookmarks[articleId] = false
+
+            //刷新用户信息
+            const userStore = useUserStore()
+            const profileStore = useProfileStore()
+            await profileStore.fetchUserStats(userStore.user.id)
         }
 
 

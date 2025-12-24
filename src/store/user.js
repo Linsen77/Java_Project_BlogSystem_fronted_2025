@@ -28,6 +28,15 @@ const useUserStore = defineStore('user', {
             localStorage.setItem('user', JSON.stringify(user))
         },
 
+        async fetchUserProfile(userId) {
+            try {
+                const res = await http.get(`/users/${userId}`)
+                this.setUser(res) // 覆盖 Pinia + localStorage
+                } catch (e) {
+                console.error("获取用户资料失败:", e)
+                }
+            },
+
         async login(email, password) {
             const res = await http.post('/auth/login', { email, password })
             this.setUser(res.data)   // 保存后端返回的用户对象
@@ -37,9 +46,6 @@ const useUserStore = defineStore('user', {
         async logout() {
             const notificationStore = useNotificationStore()
             notificationStore.stopSocket()
-
-            // 如果后端有 logout 接口，可以调用：
-            // await http.post('/auth/logout')
 
             this.user = null
             localStorage.removeItem('user')
@@ -55,7 +61,11 @@ const useUserStore = defineStore('user', {
         },
 
         async unfollow(userId) {
-            await http.delete(`/follow/${userId}`)
+            await http({
+                method: 'delete',
+                url: `/follow/${userId}`,
+                withCredentials: true
+            })
         },
 
         async isFollowing(userId) {
@@ -76,8 +86,8 @@ const useUserStore = defineStore('user', {
             return res
         },
 
-        async getBookmarkArticles() {
-            const res = await http.get(`/users/${this.user.id}/bookmarks`)
+        async getBookmarkArticles(userId) {
+            const res = await http.get(`/users/bookmarks/${userId}`)
             return res
         },
 

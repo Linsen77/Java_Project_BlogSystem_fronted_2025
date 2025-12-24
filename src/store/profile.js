@@ -7,8 +7,8 @@ export const useProfileStore = defineStore("profile", {
         avatar: '',
         name: '',
         bio: '',
-        stats: { articles: 0, following: 0, followers: 0, likes: 0 },
-        articles: []
+        stats: { articleCount: 0, followerCount: 0, followeeCount: 0, likeCount: 0, bookmarks: 0 },
+        articles: [],
     }),
     actions:{
         async fetchUserInfo(userId){
@@ -16,11 +16,17 @@ export const useProfileStore = defineStore("profile", {
             this.avatar = res.data.avatar;
             this.name = res.data.name;
             this.bio = res.data.bio;
-            this.status = res.data.status;
         },
+
+        // 获取用户统计数据（文章数、粉丝数、关注数、点赞数、收藏数）
+        async fetchUserStats(userId) {
+            const res = await http.get(`/users/${userId}/status`);
+            this.stats = res; // 后端返回的字段名和 stats 完全一致
+        },
+
         async fetchUserArticles(userId){
             try {
-                const res = await http.get('/articles', { params: { userId } })
+                const res = await http.get(`/articles/byAuthor/${userId}`)
                 // 如果后端返回的是数组
                 this.articles = Array.isArray(res) ? res : []
                 console.log("文章列表返回 =", this.articles)

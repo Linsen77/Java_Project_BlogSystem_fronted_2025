@@ -22,12 +22,15 @@ const userStore = useUserStore()
 
 onMounted(() => {
   notificationStore.fetchNotifications(userStore.user.id)
-  notificationStore.startSocket()
+
+  //测试用
+  console.log("当前登录用户 =", userStore.user)
+  console.log("当前用户ID =", userStore.user?.id)
+  console.log("当前 userStore.user =", userStore.user)
+  console.log("当前 userId =", userStore.user?.id)
+
 })
 
-onUnmounted(() => {
-  notificationStore.stopSocket()
-})
 </script>
 
 <style scoped>

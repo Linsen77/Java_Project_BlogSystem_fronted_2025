@@ -3,11 +3,12 @@
     <v-list-item
         v-for="notification in notificationStore.notifications"
         :key="notification.id"
-        @click="$router.push({ name: 'notification-detail', params: { id: notification.id } })"
+        @click="notificationStore.markAsRead(notification.id)"
+        :class="{ read: notification.readFlag }"
     >
       <v-list-item-content>
-        <v-list-item-title>{{ notification.message }}</v-list-item-title>
-        <v-list-item-subtitle>{{ notification.timestamp }}</v-list-item-subtitle>
+        <v-list-item-title>{{ notification.content }}</v-list-item-title>
+        <v-list-item-subtitle>{{ notification.createtime }}</v-list-item-subtitle>
       </v-list-item-content>
     </v-list-item>
 
@@ -39,5 +40,10 @@ const notificationStore = useNotificationStore()
 
 .v-list-item-subtitle {
   font-size: 0.9rem;
+}
+
+/* 已读通知变淡 */
+.read {
+  opacity: 0.5;
 }
 </style>

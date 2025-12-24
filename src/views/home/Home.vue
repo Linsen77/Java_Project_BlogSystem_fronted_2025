@@ -74,7 +74,7 @@
             <VListItem
                 v-for="hot in blog.hotArticles"
                 :key="hot.id"
-                @click="$router.push(`/post/${hot.id}`)"
+                @click="$router.push(`/article/${hot.id}`)"
                 style="cursor: pointer"
             >
               <VListItemTitle>{{ hot.title }}</VListItemTitle>

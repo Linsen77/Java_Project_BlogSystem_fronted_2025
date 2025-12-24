@@ -86,8 +86,6 @@ const loginUser = async () => {
     if (res.code === 200) {
       // 保存用户信息
       userStore.setUser(res.data)
-      userStore.isLoggedIn = true
-      userStore.user = res.data
 
       //测试登录
       console.log("准备跳转到 profile")
