@@ -13,7 +13,7 @@
     <v-card class="pa-6 mb-8" elevation="0" variant="tonal" color="primary">
       <h1 class="text-h4 font-weight-medium mb-2">{{ article?.title }}</h1>
       <p class="text-body-2 text-secondary">
-        作者：{{ article?.author || '默认用户' }} · 发布于 {{ article?.date || '2026-01-01' }}
+        作者：{{ article?.author?.name || '默认用户' }} · 发布于 {{ article?.createTime?.slice(0, 10) || '2026-01-01' }}
       </p>
     </v-card>
 
@@ -24,11 +24,11 @@
 
     <!-- 正文区 -->
     <v-card class="pa-6 mb-10" elevation="0" variant="outlined">
-      <v-md-preview v-if="article" :text="article.content" />
-      <div v-else class="text-error">文章未找到</div>
+      <MdPreview v-if="article?.content" :modelValue="article.content" />
+      <div v-else class="text-error">文章内容为空</div>
     </v-card>
 
-    <!-- 点赞 + 评论 + 分享 -->
+    <!-- 点赞 + 评论 + 收藏 -->
     <v-row class="mb-10">
       <v-col cols="12" md="6" class="d-flex align-center">
 
@@ -60,7 +60,7 @@
             prepend-icon="mdi-heart"
             @click="toggleBookmark"
         >
-          {{ userStore.isBookmarked(article.id) ? '取消收藏' : '收藏' }}
+          {{ articleStore.bookmarks[article.id] ? '取消收藏' : '收藏' }}
         </v-btn>
 
 
@@ -74,7 +74,7 @@
         </v-btn>
 
         <v-btn
-            v-if="userStore.user?.id === article?.authorId"
+            v-if="userStore.user?.id === article?.author?.id"
             variant="text"
             color="error"
             prepend-icon="mdi-delete"
@@ -97,11 +97,11 @@
           elevation="0"
           variant="outlined"
       >
-        <strong>{{ c.authorName }}</strong>
+        <strong>{{ c.author?.name }}</strong>
         <p>{{ c.content }}</p>
-        <small>{{ c.date }}</small>
+        <small>{{ c.createTime?.slice(0, 10) }}</small>
         <v-btn
-            v-if="userStore.user?.id === c.authorId || userStore.user?.id === article.authorId"
+            v-if="userStore.user?.id === c.authorId || userStore.user?.id === article.author?.id"
             variant="text"
             color="error"
             size="small"
@@ -152,7 +152,7 @@ const router = useRouter()
 const profileStore = useProfileStore()
 const articleStore = useArticleStore()
 const userStore = useUserStore()
-const isLiked = computed(() => userStore.isLiked(articleId))
+const isLiked = computed(() => articleStore.userLikeStatus[articleId] === true)
 const article = ref(null)
 const dialog = ref(false)
 const newComment = ref('')
@@ -168,12 +168,22 @@ const comments = computed(() => articleStore.comments[articleId] || [])
 
 // 页面加载
 onMounted(async () => {
-  article.value = profileStore.articles.find(a => a.id == articleId)
-  userStore.addHistory(article.id)
+  article.value = await articleStore.getArticleById(articleId)
+  if(!article.value){
+    console.error("文章加载失败")
+    return
+  }
 
-  await articleStore.fetchLikes(articleId)
+  const userId = userStore.user?.id
+
+  await articleStore.fetchUserLikeStatus(articleId, userId)
+  await articleStore.fetchLikes(articleId, userId)
   await articleStore.fetchComments(articleId)
+  await articleStore.fetchBookmarkStatus(articleId, userId)
 
+  //测试用
+  console.log('文章内容：', article.value.content)
+  console.log("文章数据：", article.value)
 
   //建立 WebSocket 连接，监听点赞和评论更新
   if (userId) connectWebSocket((msg) => {
@@ -189,7 +199,7 @@ onMounted(async () => {
 
 // 跳转作者主页
 const goToAuthorProfile = () => {
-  router.push(`/profile?userId=${article.value.authorId}`)
+  router.push(`/profile?userId=${article.value.author?.id}`)
 }
 
 // 点赞 / 取消点赞
@@ -198,12 +208,11 @@ const toggleLike = async () => {
 
   if (isLiked.value) {
     await articleStore.unlike(articleId)
-    userStore.removeLike(articleId)
   } else {
     await articleStore.like(articleId)
-    userStore.addLike(articleId)
   }
 }
+
 
 // 发布评论
 const submitComment = async () => {
@@ -228,7 +237,7 @@ const deleteArticle = async () => {
   if (!article.value) return
 
   //前端权限校验
-  if (userStore.user.id !== article.value.authorId) {
+  if (userStore.user.id !== article.value.author?.id) {
     alert('你没有权限删除这篇文章')
     return
   }
@@ -245,15 +254,16 @@ const deleteArticle = async () => {
 }
 
 //收藏文章
-const toggleBookmark = () => {
+const toggleBookmark = async () => {
   if (!userStore.isLoggedIn) return alert('请先登录')
 
-  if (userStore.isBookmarked(article.value.id)) {
-    userStore.removeBookmark(article.value.id)
+  if (articleStore.bookmarks[article.value.id]) {
+    await articleStore.removeBookmark(article.value.id)
   } else {
-    userStore.addBookmark(article.value.id)
+    await articleStore.addBookmark(article.value.id)
   }
 }
+
 
 //删除评论
 const deleteComment = async (commentId) => {
@@ -265,7 +275,7 @@ const deleteComment = async (commentId) => {
 
   if (
       userStore.user.id !== comment.authorId &&
-      userStore.user.id !== article.value.authorId
+      userStore.user.id !== article.value.author?.id
   ) {
     alert('你没有权限删除这条评论')
     return

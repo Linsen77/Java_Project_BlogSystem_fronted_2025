@@ -9,11 +9,7 @@ const http = axios.create({
 
 // 请求拦截器：添加 token（如果存在）
 http.interceptors.request.use(config => {
-    const token = localStorage.getItem('token')
-
-    if (token && token !== "null" && token !== "undefined") {
-        config.headers.Authorization = `Bearer ${token}`
-    }
+    console.log("即将发送请求：", config.method, config.url)
 
     return config
 })

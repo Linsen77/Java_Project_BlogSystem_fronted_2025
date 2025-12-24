@@ -87,7 +87,7 @@ const loginUser = async () => {
       // 保存用户信息
       userStore.setUser(res.data)
       userStore.isLoggedIn = true
-      localStorage.setItem("user", JSON.stringify(res.data))
+      userStore.user = res.data
 
       //测试登录
       console.log("准备跳转到 profile")

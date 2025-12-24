@@ -13,12 +13,12 @@
           <VRow align="center">
             <VCol cols="3">
               <VAvatar size="70">
-                <VImg :src="user.avatar" />
+                <VImg :src="user.avatarUrl" />
               </VAvatar>
             </VCol>
 
             <VCol cols="9">
-              <h3 class="text-h6">{{ user.name }}</h3>
+              <h3 class="text-h6">{{ user.username }}</h3>
               <p class="text-body-2">{{ user.bio }}</p>
 
               <VBtn

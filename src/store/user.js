@@ -12,52 +12,14 @@ function safeParse(key) {
     }
 }
 
-function safeParseArray(key) {
-    try {
-        return JSON.parse(localStorage.getItem(key)) || []
-    } catch {
-        return []
-    }
-}
-
 const useUserStore = defineStore('user', {
     state: () => ({
-        user: safeParse('user'),
-        token: localStorage.getItem('token') || null,
-        isLoggedIn: !!localStorage.getItem('token'),
-
-        following: (() => {
-            try {
-                return JSON.parse(localStorage.getItem('following')) || []
-            } catch {
-                return []
-            }
-        })(),
-        bookmarks: (() => {
-            try {
-                return JSON.parse(localStorage.getItem('bookmarks')) || []
-            } catch {
-                return []
-            }
-        })(),
-
-        history: (() => {
-            try {
-                return JSON.parse(localStorage.getItem('history')) || []
-            } catch {
-                return []
-            }
-        })(),
-
-        likedArticles: (() => {
-            try {
-                return JSON.parse(localStorage.getItem('likedArticles')) || []
-            } catch {
-                return []
-            }
-        })(),
-
+        user: safeParse('user'),   // 登录用户信息
     }),
+
+    getters: {
+        isLoggedIn: (state) => !!state.user
+    },
 
     actions: {
         setUser(user) {
@@ -66,118 +28,62 @@ const useUserStore = defineStore('user', {
             localStorage.setItem('user', JSON.stringify(user))
         },
 
-        setToken(token) {
-            this.token = token
-            this.isLoggedIn = true
-            localStorage.setItem('token', token)
+        async login(email, password) {
+            const res = await http.post('/auth/login', { email, password })
+            this.setUser(res.data)   // 保存后端返回的用户对象
+            return res.data
         },
 
-        logout() {
+        async logout() {
             const notificationStore = useNotificationStore()
             notificationStore.stopSocket()
 
-            this.user = null
-            this.token = null
-            this.isLoggedIn = false
-            this.following = []
-            this.bookmarks = []
-            this.history = []
-            this.likedArticles = []
+            // 如果后端有 logout 接口，可以调用：
+            // await http.post('/auth/logout')
 
-            localStorage.removeItem('token')
+            this.user = null
             localStorage.removeItem('user')
-            localStorage.removeItem('following')
-            localStorage.removeItem('bookmarks')
-            localStorage.removeItem('history')
-            localStorage.removeItem('likedArticles')
         },
 
         async fetchUserStatistics(userId) {
-            if (!userId) {
-                console.warn("No userId, skip statistics request")
-                return
-            }
             const res = await http.get(`/users/${userId}/status`)
-            return res.data
+            return res
         },
 
         async follow(userId) {
-            if (!this.following.includes(userId)) {
-                this.following.push(userId)
-                localStorage.setItem('following', JSON.stringify(this.following))
-                await http.post(`/users/${userId}/follow`)
-            }
+            await http.post(`/follow/${userId}`)
         },
 
         async unfollow(userId) {
-            this.following = this.following.filter(id => id !== userId)
-            localStorage.setItem('following', JSON.stringify(this.following))
-            await http.delete(`/users/${userId}/unfollow`)
+            await http.delete(`/follow/${userId}`)
         },
 
-        isFollowing(userId) {
-            return Array.isArray(this.following) && this.following.includes(userId)
-        },
-
-        async getFollowingUsers() {
-            const res = await http.get(`/users/${this.user.id}/following`)
-            return res.data
-        },
-
-        async addBookmark(articleId) {
-            if (!this.bookmarks.includes(articleId)) {
-                this.bookmarks.push(articleId)
-                localStorage.setItem('bookmarks', JSON.stringify(this.bookmarks))
-                await http.post(`/articles/${articleId}/bookmark`)
+        async isFollowing(userId) {
+            if (!this.user) return false
+            try {
+                // 调用后端接口，获取当前用户的关注列表
+                const res = await http.get(`/follow/list/${this.user.id}`)
+                // 判断目标用户是否在关注列表里
+                return res.some(u => u.id === userId)
+            } catch (e) {
+                console.error("检查关注状态失败:", e)
+                return false
             }
         },
 
-        async removeBookmark(articleId) {
-            this.bookmarks = this.bookmarks.filter(id => id !== articleId)
-            localStorage.setItem('bookmarks', JSON.stringify(this.bookmarks))
-            await http.delete(`/articles/${articleId}/bookmark`)
-        },
-
-        isBookmarked(articleId) {
-            return this.bookmarks.includes(articleId)
+        async getFollowingUsers(userId) {
+            const res = await http.get(`/follow/list/${userId}`)
+            return res
         },
 
         async getBookmarkArticles() {
             const res = await http.get(`/users/${this.user.id}/bookmarks`)
-            return res.data
-        },
-
-        addHistory(id) {
-            if (!this.history.includes(id)) {
-                this.history.push(id)
-                localStorage.setItem('history', JSON.stringify(this.history))
-            }
-        },
-
-        getHistoryArticles() {
-            return this.history
+            return res
         },
 
         async fetchHistoryFromServer(userId) {
             const res = await http.get(`/users/${userId}/history`)
-            this.history = res.data
-            localStorage.setItem('history', JSON.stringify(this.history))
-        },
-
-        isLiked(articleId) {
-            return this.likedArticles.includes(articleId)
-        },
-
-        addLike(articleId) {
-            if (!this.likedArticles.includes(articleId)) {
-                this.likedArticles.push(articleId)
-                localStorage.setItem('likedArticles', JSON.stringify(this.likedArticles))
-            }
-        },
-
-        removeLike(articleId) {
-            this.likedArticles = this.likedArticles.filter(id => id !== articleId)
-            localStorage.setItem('likedArticles', JSON.stringify(this.likedArticles))
+            return res
         }
     }
 })

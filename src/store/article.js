@@ -5,35 +5,54 @@ export const useArticleStore = defineStore('article', {
     state: () => ({
         comments: {},   // { articleId: [commentList] }
         likes: {},       // { articleId: likeCount }
-        recommended: []
+        userLikeStatus: {},
+        recommended: [],
+        bookmarks: {}   // { articleId: true/false }
     }),
 
     actions: {
+
+        //通过articleId获取文章
+        async getArticleById(articleId) {
+            try {
+                const res = await http.get(`/articles/${articleId}`)
+                return res
+            } catch (e) {
+                console.error("获取文章详情失败", e)
+                return null
+            }
+        },
+
         //获取评论
         async fetchComments(articleId) {
             const res = await http.get(`/articles/${articleId}/comments`)
-            this.comments[articleId] = res.data
+            this.comments[articleId] = res
         },
 
         //发布评论
         async addComment(articleId, content) {
             const res = await http.post(`/articles/${articleId}/comments`, { content })
-            this.comments[articleId].push(res.data)
+            if (!this.comments[articleId]) {
+                this.comments[articleId] = []
+            }
+            this.comments[articleId].push(res)
+
         },
 
         // 获取用户是否点赞
-        async fetchUserLikeStatus(articleId) {
-            const res = await http.get(`/articles/${articleId}/isLiked`)
-            return res.data.isLiked
+        async fetchUserLikeStatus(articleId, userId) {
+            const res = await http.get(`/articles/${articleId}/likes`, { params: { userId } })
+            this.userLikeStatus[articleId] = res === true
         },
 
         //获取点赞数
-        async fetchLikes(articleId) {
+        async fetchLikes(articleId, userId) {
+            if(!userId) return
             try{
-                const res = await http.get(`/articles/${articleId}/likes`)
-                this.likes[articleId] = res.data.count
+                const res = await http.get(`/articles/${articleId}/likes/count`, { params: { userId } })
+                this.likes[articleId] = res
             }catch (e) {
-                console.error("获取点赞状态失败",e);
+                console.error("获取点赞数失败",e);
             }
 
         },
@@ -42,12 +61,14 @@ export const useArticleStore = defineStore('article', {
         async like(articleId) {
             await http.post(`/articles/${articleId}/like`)
             this.likes[articleId]++
+            this.userLikeStatus[articleId] = true
         },
 
         //取消点赞
         async unlike(articleId) {
             await http.delete(`/articles/${articleId}/like`)
             this.likes[articleId]--
+            this.userLikeStatus[articleId] = false
         },
 
         //Websocket点赞更新
@@ -86,7 +107,22 @@ export const useArticleStore = defineStore('article', {
         //获取推荐文章
         async fetchRecommended(userId) {
             const res = await http.get(`/articles/recommend/${userId}`)
-            this.recommended = res.data
+            this.recommended = res
+        },
+
+        async fetchBookmarkStatus(articleId, userId) {
+            const res = await http.get(`/articles/${articleId}/bookmark/status`, { params: { userId } })
+            this.bookmarks[articleId] = res === true
+        },
+
+        async addBookmark(articleId) {
+            await http.post(`/articles/${articleId}/bookmark`)
+            this.bookmarks[articleId] = true
+        },
+
+        async removeBookmark(articleId) {
+            await http.delete(`/articles/${articleId}/bookmark`)
+            this.bookmarks[articleId] = false
         }
 
 

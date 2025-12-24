@@ -22,7 +22,7 @@
         clearable
         dense
         class="mb-8"
-        @input="handleSearch"
+        @keyup.enter="handleSearch"
     />
 
     <VRow>
@@ -44,10 +44,10 @@
                 />
                 <VCardTitle class="text-h6">{{ article.title }}</VCardTitle>
                 <VCardText class="text-body-2">
-                  {{ article.summary }}
+                  {{ article.content?.slice(0, 60) + '...' }}
                 </VCardText>
                 <VCardActions>
-                  <VBtn variant="text" color="primary" :to="`/post/${article.id}`">
+                  <VBtn variant="text" color="primary" :to="`/article/${article.id}`" router>
                     阅读全文
                   </VBtn>
                 </VCardActions>
@@ -123,8 +123,8 @@ const filteredArticles = computed(() => {
 
   return articles.filter(article => {
     const titleMatch = article.title?.toLowerCase().includes(q)
-    const authorMatch = article.author?.toLowerCase().includes(q)
-    const tagMatch = Array.isArray(article.tags) && article.tags.some(tag => tag.toLowerCase().includes(q))
+    const authorMatch = article.author?.name?.toLowerCase().includes(q)
+    const tagMatch = Array.isArray(article.tags) && article.tags.some(tag => tag.name?.toLowerCase().includes(q))
 
     return titleMatch || authorMatch || tagMatch
   })
@@ -139,32 +139,51 @@ const handleSearch = async () => {
   const q = searchQuery.value.trim()
   if (!q) return
 
-  // 1. 先按标签搜索
-  const tagRes = await http.get('/articles/search/byTag', {
-    params: { tag: q }
-  })
+  try {
+    // 1. 按标签搜索
+    const tagRes = await http.get('/articles/search/byTag', {
+      params: { tagName: q }
+    })
+    console.log("标签搜索结果：", tagRes)
 
-  if (tagRes.data && tagRes.data.length > 0) {
-    blog.articles = tagRes.data
-    return
+    if (Array.isArray(tagRes) && tagRes.length > 0) {
+      blog.articles = tagRes
+      return
+    }
+
+    // 2. 按作者搜索
+    const authorRes = await http.get('/articles/search/byAuthor', {
+      params: { authorName: q }
+    })
+    console.log("作者搜索结果：", authorRes)
+
+    if (Array.isArray(authorRes) && authorRes.length > 0) {
+      blog.articles = authorRes
+      return
+    }
+
+    // 3. 按标题搜索
+    const titleRes = await http.get('/articles/search/byTitle', {
+      params: { keyword: q }
+    })
+    console.log("标题搜索结果：", titleRes)
+
+    blog.articles = Array.isArray(titleRes) ? titleRes : []
+  } catch (err) {
+    console.error("搜索失败：", err)
   }
-
-  // 2. 如果不是标签，再全文搜索（标题 / 作者）
-  const fullRes = await http.get('/articles/search', {
-    params: { q }
-  })
-
-  blog.articles = fullRes.data
 }
-
 
 // 初始化数据
 onMounted(() => {
   blog.fetchArticles()
   blog.fetchHotArticles()
 
+  //测试
+  console.log("当前用户：", userStore.user)
+
   if (userStore.user) {
-    blog.fetchRecommended(userStore.user.userid)
+    blog.fetchRecommended(userStore.user.id)
   }
 })
 

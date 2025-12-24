@@ -62,7 +62,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import http from '@/service/http'
 import { useProfileStore } from '@/store/profile'
@@ -81,6 +81,25 @@ const loading = ref(false)
 const isEdit = ref(false)
 const articleId = ref(null)
 const tags = ref([])
+const coverUrl = ref('')
+
+
+
+watch(image, async (file) => {
+  if (!file) return
+
+  const formData = new FormData()
+  formData.append("file", file)
+
+  try {
+    const res = await http.post('/upload', formData)
+    coverUrl.value = res.url   //保存封面 URL
+    console.log("封面上传成功：", coverUrl.value)
+  } catch (e) {
+    console.error("封面上传失败", e)
+  }
+})
+
 
 onMounted(() => {
   // 编辑模式
@@ -106,10 +125,13 @@ const saveArticle = async () => {
     if (isEdit.value) {
       //编辑文章
       await http.put(`/articles/${articleId.value}`, {
+        id: articleId.value,
         title: title.value,
         content: content.value,
         tags: tags.value.map(t => t.id),
-        visibility: visibility.value
+        visibility: visibility.value,
+        cover: coverUrl.value || article.value.cover,
+        authorId: userStore.user.id
       })
 
       router.push(`/article/${articleId.value}`)
@@ -118,6 +140,7 @@ const saveArticle = async () => {
       const res = await http.post('/articles', {
         title: title.value,
         content: content.value,
+        cover: coverUrl.value,
         tags: tags.value.map(t => t.id),
         visibility: visibility.value,
         authorId: userStore.user.id
@@ -126,6 +149,9 @@ const saveArticle = async () => {
       // 后端返回新文章 ID
       const newId = res.id
       router.push(`/article/${newId}`)
+
+      //测试标签
+      console.log("提交的标签：", tags.value)
     }
   } catch (err) {
     console.error('文章保存失败:', err)

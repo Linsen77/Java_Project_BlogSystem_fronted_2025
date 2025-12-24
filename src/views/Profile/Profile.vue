@@ -29,12 +29,12 @@
               </VCol>
 
               <VCol cols="3" class="text-center" style="cursor: pointer;" @click="goToFollowing">
-                <div class="text-h6">{{ stats?.following ?? 0}}</div>
+                <div class="text-h6">{{ stats?.followingCount ?? 0}}</div>
                 <div class="text-caption">关注</div>
               </VCol>
 
               <VCol cols="3" class="text-center">
-                <div class="text-h6">{{ stats?.followers ?? 0}}</div>
+                <div class="text-h6">{{ stats?.followerCount ?? 0}}</div>
                 <div class="text-caption">粉丝</div>
               </VCol>
 
@@ -63,7 +63,7 @@
             <!-- 访问别人主页：关注/取消关注 -->
             <template v-else>
               <VBtn
-                  v-if="userStore.user && !userStore.isFollowing(profileUser.id)"
+                  v-if="userStore.user && !isFollowingUser"
                   color="secondary"
                   class="mt-6"
                   @click="followUser"
@@ -101,7 +101,7 @@
               {{ article.summary }}
             </VCardText>
             <VCardActions>
-              <VBtn variant="text" color="primary" :to="`/article/${article.id}`">
+              <VBtn variant="text" color="primary" :to="`/article/${article.id}`" router>
                 阅读全文
               </VBtn>
             </VCardActions>
@@ -125,7 +125,7 @@
                 {{ article.summary }}
               </VCardText>
               <VCardActions>
-                <VBtn variant="text" color="primary" :to="`/article/${article.id}`">
+                <VBtn variant="text" color="primary" :to="`/article/${article.id}`" router>
                   阅读全文
                 </VBtn>
               </VCardActions>
@@ -169,17 +169,22 @@ import useUserStore from '@/store/user.js'
 import { useRoute, useRouter } from 'vue-router'
 import http from '@/service/http'
 import defaultAvatar from '@/assets/default-avatar.png'
+import { useArticleStore } from '@/store/article'
 
 const router = useRouter()
 const profileStore = useProfileStore()
 const userStore = useUserStore()
 const route = useRoute()
+const otherUser = ref(null)
+const isFollowingUser = ref(false)
+const bookmarkIds = ref([])
+const articleStore = useArticleStore()
 
 
 // 当前查看的用户 ID
 const profileUserId = computed(() => {
   if (!userStore.user) return null
-  return route.query.userId || userStore.user.id
+  return route.query.userId ? Number(route.query.userId) : userStore.user.id
 })
 
 // 是否是本人主页
@@ -191,6 +196,15 @@ const isSelf = computed(() => {
 const profileUser = computed(() => {
   if (!profileUserId.value) return null
   if (isSelf.value) return userStore.user
+  if (otherUser.value) {
+    return{
+      id: otherUser.value.id,
+      name: otherUser.value.username,
+      avatarUrl: otherUser.value.avatar,
+      bio: otherUser.value.bio
+    }
+  }
+
   return {
     id: profileUserId.value,
     name: `用户 ${profileUserId.value}`,
@@ -213,8 +227,12 @@ const editName = ref('')
 const editBio = ref('')
 const editAvatar = ref(null)
 
-// 加载统计数据
+
 onMounted(async () => {
+
+  await profileStore.fetchUserArticles(profileUserId.value)
+
+  //加载统计数据
   if (profileUserId.value) {
     try {
       if (userStore.isLoggedIn && userStore.user) {
@@ -226,10 +244,38 @@ onMounted(async () => {
     }
   }
 
+  //如果访问别人主页，加载真实资料
+  if (!isSelf.value) {
+    try {
+      const res = await http.get(`/users/${profileUserId.value}`, {
+        params: { viewerId: userStore.user?.id }
+      })
+
+      //测试用
+      console.log("后端返回的用户数据 =", res)
+
+      otherUser.value = res // 后端返回的真实用户信息
+    } catch (e) {
+      console.error("加载用户资料失败", e)
+    }
+  }
+
+  //本人主页
   if (isSelf.value) {
     editName.value = userStore.user?.name
     editBio.value = userStore.user?.bio
   }
+
+  if (!isSelf.value && userStore.user) {
+    try {
+      const res = await http.get(`/users/${userStore.user.id}/bookmarks`)
+      bookmarkIds.value = Array.isArray(res) ? res.map(a => a.id) : []
+    } catch (e) {
+      console.error("加载收藏失败:", e)
+      bookmarkIds.value = []
+    }
+  }
+
 })
 
 // 保存个人资料
@@ -264,18 +310,30 @@ const saveProfile = async () => {
 
 
 // 当前用户的文章
-const userArticles = computed(() =>
-    profileStore.articles.filter(a => a.authorId == profileUserId.value)
-)
+const userArticles = computed(() => {
+  const list = Array.isArray(profileStore.articles) ? profileStore.articles : []
+  return list.filter(a => a.author?.id == profileUserId.value)
+})
+
 
 // 收藏文章
-const bookmarkedArticles = computed(() =>
-    profileStore.articles.filter(a => userStore.bookmarks.includes(a.id))
-)
+const bookmarkedArticles = computed(() => {
+  const list = Array.isArray(profileStore.articles) ? profileStore.articles : []
+  return list.filter(a => articleStore.bookmarks[a.id])
+})
+
 
 // 关注 / 取消关注
-const followUser = () => userStore.follow(profileUserId.value)
-const unfollowUser = () => userStore.unfollow(profileUserId.value)
+const followUser = async () => {
+  await userStore.follow(profileUserId.value)
+  isFollowingUser.value = true
+}
+
+const unfollowUser = async () => {
+  await userStore.unfollow(profileUserId.value)
+  isFollowingUser.value = false
+}
+
 
 // 查看关注列表
 const goToFollowing = () => {

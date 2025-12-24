@@ -1,5 +1,6 @@
 import { defineStore} from "pinia";
-import { getUserInfo, getUserArticles} from "@/service/api.js";
+import { getUserInfo } from "@/service/api.js";
+import http from "@/service/http.js";
 
 export const useProfileStore = defineStore("profile", {
     state: () =>({
@@ -18,8 +19,16 @@ export const useProfileStore = defineStore("profile", {
             this.status = res.data.status;
         },
         async fetchUserArticles(userId){
-            const res = await getUserArticles(userId);
-            this.articles = res.data;
+            try {
+                const res = await http.get('/articles', { params: { userId } })
+                // 如果后端返回的是数组
+                this.articles = Array.isArray(res) ? res : []
+                console.log("文章列表返回 =", this.articles)
+            } catch (e) {
+                console.error("获取用户文章失败", e)
+                this.articles = []
+            }
         }
+
     }
 })

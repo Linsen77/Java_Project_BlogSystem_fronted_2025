@@ -20,7 +20,7 @@
             {{ article.summary }}
           </VCardText>
           <VCardActions>
-            <VBtn variant="text" color="primary" :to="`/article/${article.id}`">
+            <VBtn variant="text" color="primary" :to="`/article/${article.id}`" router>
               阅读全文
             </VBtn>
           </VCardActions>
