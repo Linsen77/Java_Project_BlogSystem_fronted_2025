@@ -5,5 +5,5 @@ This template should help get you started developing with Vue 3 in Vite. The tem
 
 Learn more about IDE Support for Vue in the [Vue Docs Scaling up Guide](https://vuejs.org/guide/scaling-up/tooling.html#ide-support).
 
-# Java_Project_BlogSystem_fronted_2025
-cbad2509d3f334cd27c046e3ea4e60ac3db0b905
+# Java_Project_BlogSystem_fronted_2025 Saki_orz Blog
+Saki_orz Blog的前端项目，配合[https://github.com/Linsen77/JavaProject_BlogSystem_2025](https://github.com/Linsen77/JavaProject_BlogSystem_2025)食用
